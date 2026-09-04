@@ -15,8 +15,11 @@ Azure Speech (`si-LK` / `ta-LK` neural voices, TTS) · Nodemailer (caregiver ema
 
 ## Features
 
-- Demo login (no password) with role selection (communicator/caregiver); caregivers must also supply
-  an email address so they can be alerted by mail, not just on their dashboard
+- Patient (communicator) login is passwordless — name + phone only, since the device is handed to a
+  non-speaking user
+- Caregivers get a real, password-protected account (`POST /auth/signup` / `POST /auth/login`,
+  bcrypt-hashed password) — no Google/OAuth, kept dependency-free — and must supply an email so they
+  can also be alerted by mail, not just on their dashboard
 - Boards & phrases (24 phrases across 8 categories, in English/Sinhala/Tamil)
 - Custom phrases with communicator approval
 - AI-powered phrase ranking (OpenAI, 2s timeout, deterministic fallback, allow-list validated)

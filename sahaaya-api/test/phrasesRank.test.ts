@@ -26,7 +26,7 @@ async function login() {
   const response = await app.inject({
     method: "POST",
     url: "/api/v1/auth/demo-login",
-    payload: { name: "Test User", phone: "0791111111", role: "communicator" },
+    payload: { name: "Test User", phone: "0791111111" },
   });
   return response.json() as { token: string };
 }

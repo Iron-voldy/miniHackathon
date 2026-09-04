@@ -16,8 +16,10 @@ Vite · React 18 · TypeScript · Tailwind CSS · i18next (en/si/ta) · `@mediap
 
 ## Features
 
-- **Login** — demo login (name, phone, role); caregivers also provide an email, since new requests
-  are emailed to them in addition to their live dashboard. Problem explanation is on this screen.
+- **Login** — patients (communicators) use a passwordless demo login (name, phone). Caregivers get a
+  real account: create one (name, phone, email, password) or log in (email, password) — no Google/
+  OAuth. New requests are emailed to caregivers in addition to their live dashboard. Problem
+  explanation is on this screen.
 - **Board** (communicator) — phrase grid in the user's chosen language, a mode toggle, and a
   confirm/cancel modal that every selection — touch or face — must pass through before sending.
 - **Two selection modes only**:

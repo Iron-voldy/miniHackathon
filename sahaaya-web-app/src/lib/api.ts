@@ -94,20 +94,42 @@ async function request<T>(
   return json as T;
 }
 
+function toSession(result: { token: string; user: { id: string; name: string; phone: string; email?: string; role: Role } }): Session {
+  return {
+    token: result.token,
+    userId: result.user.id,
+    role: result.user.role,
+    name: result.user.name,
+    phone: result.user.phone,
+    email: result.user.email,
+  };
+}
+
 export const api = {
-  async demoLogin(params: { name: string; phone: string; role: Role; email?: string }): Promise<Session> {
-    const result = await request<{
-      token: string;
-      user: { id: string; name: string; phone: string; email?: string; role: Role };
-    }>("/auth/demo-login", { method: "POST", body: params });
-    return {
-      token: result.token,
-      userId: result.user.id,
-      role: result.user.role,
-      name: result.user.name,
-      phone: result.user.phone,
-      email: result.user.email,
-    };
+  // Patient side: passwordless, name + phone only.
+  async demoLogin(params: { name: string; phone: string }): Promise<Session> {
+    const result = await request<{ token: string; user: { id: string; name: string; phone: string; email?: string; role: Role } }>(
+      "/auth/demo-login",
+      { method: "POST", body: params }
+    );
+    return toSession(result);
+  },
+
+  // Caregiver side: real password-protected account (no Google/OAuth for now).
+  async signup(params: { name: string; phone: string; email: string; password: string }): Promise<Session> {
+    const result = await request<{ token: string; user: { id: string; name: string; phone: string; email?: string; role: Role } }>(
+      "/auth/signup",
+      { method: "POST", body: params }
+    );
+    return toSession(result);
+  },
+
+  async login(params: { email: string; password: string }): Promise<Session> {
+    const result = await request<{ token: string; user: { id: string; name: string; phone: string; email?: string; role: Role } }>(
+      "/auth/login",
+      { method: "POST", body: params }
+    );
+    return toSession(result);
   },
 
   listBoards(token: string, context = "home"): Promise<BoardSummary[]> {

@@ -9,14 +9,18 @@ const LANGUAGES: Array<{ code: "en" | "si" | "ta"; label: string }> = [
   { code: "ta", label: "தமிழ்" },
 ];
 
+type CaregiverMode = "login" | "signup";
+
 export default function Login() {
   const { t, i18n } = useTranslation();
   const { setSession } = useSession();
 
   const [role, setRole] = useState<Role>("communicator");
+  const [caregiverMode, setCaregiverMode] = useState<CaregiverMode>("login");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -25,12 +29,12 @@ export default function Login() {
     setError(null);
     setSubmitting(true);
     try {
-      const session = await api.demoLogin({
-        name: name.trim(),
-        phone: phone.trim(),
-        role,
-        email: email.trim() || undefined,
-      });
+      const session =
+        role === "communicator"
+          ? await api.demoLogin({ name: name.trim(), phone: phone.trim() })
+          : caregiverMode === "login"
+          ? await api.login({ email: email.trim(), password })
+          : await api.signup({ name: name.trim(), phone: phone.trim(), email: email.trim(), password });
       setSession(session);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Something went wrong — please try again.");
@@ -38,6 +42,20 @@ export default function Login() {
       setSubmitting(false);
     }
   }
+
+  const caregiverSignup = role === "caregiver" && caregiverMode === "signup";
+  const submitLabel =
+    role === "communicator"
+      ? submitting
+        ? t("loggingIn")
+        : t("login")
+      : caregiverMode === "login"
+      ? submitting
+        ? t("loggingIn")
+        : t("logIn")
+      : submitting
+      ? t("signingUp")
+      : t("createAccount");
 
   return (
     <div className="login-shell min-h-screen flex items-center justify-center p-4">
@@ -83,7 +101,10 @@ export default function Login() {
           <div className="grid grid-cols-2 gap-2 mb-6">
             <button
               type="button"
-              onClick={() => setRole("communicator")}
+              onClick={() => {
+                setRole("communicator");
+                setError(null);
+              }}
               className={`py-3 rounded-xl border text-sm font-medium transition ${
                 role === "communicator"
                   ? "bg-teal-600 text-white border-teal-600 shadow"
@@ -94,7 +115,10 @@ export default function Login() {
             </button>
             <button
               type="button"
-              onClick={() => setRole("caregiver")}
+              onClick={() => {
+                setRole("caregiver");
+                setError(null);
+              }}
               className={`py-3 rounded-xl border text-sm font-medium transition ${
                 role === "caregiver"
                   ? "bg-teal-600 text-white border-teal-600 shadow"
@@ -105,28 +129,64 @@ export default function Login() {
             </button>
           </div>
 
+          {role === "caregiver" && (
+            <div className="flex gap-2 justify-center mb-5 text-sm">
+              <button
+                type="button"
+                onClick={() => {
+                  setCaregiverMode("login");
+                  setError(null);
+                }}
+                className={`px-3 py-1.5 rounded-full transition ${
+                  caregiverMode === "login" ? "font-semibold text-teal-700 underline" : "text-slate-400"
+                }`}
+              >
+                {t("logIn")}
+              </button>
+              <span className="text-slate-300">·</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setCaregiverMode("signup");
+                  setError(null);
+                }}
+                className={`px-3 py-1.5 rounded-full transition ${
+                  caregiverMode === "signup" ? "font-semibold text-teal-700 underline" : "text-slate-400"
+                }`}
+              >
+                {t("createAccount")}
+              </button>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">{t("yourName")}</label>
-              <input
-                required
-                minLength={2}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 outline-none"
-                placeholder="Kasun"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-600 mb-1">{t("yourPhone")}</label>
-              <input
-                required
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 outline-none"
-                placeholder="077 123 4567"
-              />
-            </div>
+            {(role === "communicator" || caregiverSignup) && (
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">{t("yourName")}</label>
+                <input
+                  required
+                  minLength={2}
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 outline-none"
+                  placeholder="Kasun"
+                />
+              </div>
+            )}
+
+            {(role === "communicator" || caregiverSignup) && (
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">{t("yourPhone")}</label>
+                <input
+                  required
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 outline-none"
+                  placeholder="077 123 4567"
+                />
+              </div>
+            )}
+
             {role === "caregiver" && (
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">{t("yourEmail")}</label>
@@ -138,7 +198,23 @@ export default function Login() {
                   className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 outline-none"
                   placeholder="you@example.com"
                 />
-                <p className="text-xs text-slate-400 mt-1">{t("emailHelpCaregiver")}</p>
+                {caregiverSignup && <p className="text-xs text-slate-400 mt-1">{t("emailHelpCaregiver")}</p>}
+              </div>
+            )}
+
+            {role === "caregiver" && (
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">{t("yourPassword")}</label>
+                <input
+                  required
+                  minLength={8}
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-2.5 focus:border-teal-500 outline-none"
+                  placeholder="••••••••"
+                  autoComplete={caregiverMode === "login" ? "current-password" : "new-password"}
+                />
               </div>
             )}
 
@@ -149,7 +225,7 @@ export default function Login() {
               disabled={submitting}
               className="w-full py-3 rounded-xl bg-teal-600 text-white font-semibold hover:bg-teal-700 disabled:opacity-60 transition"
             >
-              {submitting ? t("loggingIn") : t("login")}
+              {submitLabel}
             </button>
           </form>
 

@@ -24,8 +24,11 @@ afterAll(async () => {
 async function login(phone: string, role: "communicator" | "caregiver") {
   const response = await app.inject({
     method: "POST",
-    url: "/api/v1/auth/demo-login",
-    payload: { name: "Test User", phone, role },
+    url: role === "caregiver" ? "/api/v1/auth/signup" : "/api/v1/auth/demo-login",
+    payload:
+      role === "caregiver"
+        ? { name: "Test User", phone, email: `${phone}@test.dev`, password: "testpass123" }
+        : { name: "Test User", phone },
   });
   return response.json() as { token: string; user: { id: string } };
 }
