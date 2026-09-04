@@ -14,9 +14,12 @@ export default function CareTeam({ session }: { session: Session }) {
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const [pairingCode, setPairingCode] = useState<string | null>(null);
-  const [codeInput, setCodeInput] = useState("");
   const [message, setMessage] = useState<{ text: string; kind: "success" | "error" } | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const [patientName, setPatientName] = useState("");
+  const [patientAccessCode, setPatientAccessCode] = useState<string | null>(null);
+  const [creatingPatient, setCreatingPatient] = useState(false);
 
   async function loadLinks() {
     try {
@@ -45,19 +48,19 @@ export default function CareTeam({ session }: { session: Session }) {
     }
   }
 
-  async function handleAcceptCode(e: React.FormEvent) {
+  async function handleCreatePatient(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
+    setCreatingPatient(true);
     setMessage(null);
     try {
-      await api.acceptPairing(session.token, codeInput.trim());
-      setMessage({ text: t("pairedSuccessfully"), kind: "success" });
-      setCodeInput("");
+      const result = await api.createPatient(session.token, { name: patientName.trim() });
+      setPatientAccessCode(result.accessCode);
+      setPatientName("");
       await loadLinks();
     } catch (err) {
-      setMessage({ text: err instanceof ApiError ? err.message : t("invalidPairingCode"), kind: "error" });
+      setMessage({ text: err instanceof ApiError ? err.message : "Could not set up the patient.", kind: "error" });
     } finally {
-      setBusy(false);
+      setCreatingPatient(false);
     }
   }
 
@@ -77,22 +80,29 @@ export default function CareTeam({ session }: { session: Session }) {
           )}
         </div>
       ) : (
-        <form onSubmit={handleAcceptCode} className="bg-white border border-slate-200 rounded-2xl p-5 mb-6 space-y-3">
-          <label className="block text-sm font-medium text-slate-600">{t("enterPairingCode")}</label>
+        <form onSubmit={handleCreatePatient} className="bg-white border border-slate-200 rounded-2xl p-5 mb-6 space-y-3">
+          <label className="block text-sm font-medium text-slate-600">{t("setUpPatientHeading")}</label>
           <input
             required
-            value={codeInput}
-            onChange={(e) => setCodeInput(e.target.value.toUpperCase())}
-            className="w-full rounded-xl border border-slate-200 px-4 py-2.5 tracking-widest uppercase"
-            placeholder="ABC123"
+            minLength={2}
+            value={patientName}
+            onChange={(e) => setPatientName(e.target.value)}
+            className="w-full rounded-xl border border-slate-200 px-4 py-2.5"
+            placeholder={t("patientNameLabel")}
           />
           <button
             type="submit"
-            disabled={busy}
+            disabled={creatingPatient}
             className="w-full py-2.5 rounded-xl bg-teal-600 text-white font-semibold disabled:opacity-60"
           >
-            {t("acceptPairing")}
+            {creatingPatient ? t("creatingPatient") : t("generateAccessCode")}
           </button>
+          {patientAccessCode && (
+            <div className="text-center pt-2">
+              <p className="text-3xl font-bold tracking-widest text-teal-700">{patientAccessCode}</p>
+              <p className="text-xs text-slate-400 mt-1">{t("accessCodeCreatedHint")}</p>
+            </div>
+          )}
         </form>
       )}
 

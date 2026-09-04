@@ -17,6 +17,7 @@ export default function Login() {
 
   const [role, setRole] = useState<Role>("communicator");
   const [caregiverMode, setCaregiverMode] = useState<CaregiverMode>("login");
+  const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -31,7 +32,7 @@ export default function Login() {
     try {
       const session =
         role === "communicator"
-          ? await api.demoLogin({ name: name.trim(), phone: phone.trim() })
+          ? await api.patientLogin(code.trim())
           : caregiverMode === "login"
           ? await api.login({ email: email.trim(), password })
           : await api.signup({ name: name.trim(), phone: phone.trim(), email: email.trim(), password });
@@ -160,7 +161,25 @@ export default function Login() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {(role === "communicator" || caregiverSignup) && (
+            {role === "communicator" && (
+              <div>
+                <label className="block text-sm font-medium text-slate-600 mb-1">{t("yourAccessCode")}</label>
+                <input
+                  required
+                  minLength={6}
+                  value={code}
+                  onChange={(e) => setCode(e.target.value.toUpperCase())}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-center text-2xl tracking-[0.2em] uppercase focus:border-teal-500 outline-none"
+                  placeholder="XXXX-XXXX"
+                  autoFocus
+                  inputMode="text"
+                  autoComplete="one-time-code"
+                />
+                <p className="text-xs text-slate-400 mt-1">{t("accessCodeHelp")}</p>
+              </div>
+            )}
+
+            {caregiverSignup && (
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">{t("yourName")}</label>
                 <input
@@ -174,7 +193,7 @@ export default function Login() {
               </div>
             )}
 
-            {(role === "communicator" || caregiverSignup) && (
+            {caregiverSignup && (
               <div>
                 <label className="block text-sm font-medium text-slate-600 mb-1">{t("yourPhone")}</label>
                 <input

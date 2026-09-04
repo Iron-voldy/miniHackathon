@@ -1,5 +1,5 @@
-import { createContext, useContext, useState, type ReactNode } from "react";
-import type { Session } from "./api";
+import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { setUnauthorizedHandler, type Session } from "./api";
 
 interface SessionContextValue {
   session: Session | null;
@@ -26,6 +26,13 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     if (s) localStorage.setItem(STORAGE_KEY, JSON.stringify(s));
     else localStorage.removeItem(STORAGE_KEY);
   }
+
+  // A stored session can outlive its JWT - drop back to the login screen
+  // instead of every authenticated page just showing a generic load error.
+  useEffect(() => {
+    setUnauthorizedHandler(() => setSession(null));
+    return () => setUnauthorizedHandler(null);
+  }, []);
 
   return <SessionContext.Provider value={{ session, setSession }}>{children}</SessionContext.Provider>;
 }

@@ -2,12 +2,19 @@ import { FastifyInstance } from "fastify";
 import crypto from "node:crypto";
 import { z } from "zod";
 import { CaregiverLink } from "../models/CaregiverLink";
+import { User } from "../models/User";
 import { authenticate } from "../lib/authenticate";
 import { parse } from "../lib/validate";
 import { auditLog } from "../lib/audit";
+import { generateAccessCode, hashAccessCode } from "../lib/accessCode";
 
 const AcceptPairingSchema = z.object({
   pairingCode: z.string().min(1, "Pairing code is required"),
+});
+
+const CreatePatientSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters").max(80),
+  language: z.enum(["en", "si", "ta"]).default("en"),
 });
 
 function generatePairingCode(): string {
@@ -68,6 +75,50 @@ export async function caregiverRoutes(app: FastifyInstance): Promise<void> {
       communicatorId: link.communicatorId.toString(),
       status: link.status,
     });
+  });
+
+  // Caregiver creates the patient's account directly and gets back a one-time
+  // access code - the patient's device logs in with just that code (see
+  // /auth/patient-code in routes/auth.ts), never typing a name or phone
+  // number. Also immediately pairs the two, so this replaces the manual
+  // "generate code / accept code" dance below for this - now primary - flow.
+  app.post("/caregivers/patients", { preHandler: authenticate }, async (request, reply) => {
+    if (request.user!.role !== "caregiver") {
+      return reply.code(403).send({ error: "Only caregivers can set up a patient" });
+    }
+
+    const result = parse(CreatePatientSchema, request.body);
+    if (!result.success || !result.data) {
+      return reply.code(400).send({ error: result.message });
+    }
+
+    const { name, language } = result.data;
+
+    let accessCode = generateAccessCode();
+    let accessCodeHash = hashAccessCode(accessCode);
+    // Extremely unlikely collision, but guard against the unique-index race anyway.
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const existing = await User.findOne({ accessCodeHash }).select("_id").lean();
+      if (!existing) break;
+      accessCode = generateAccessCode();
+      accessCodeHash = hashAccessCode(accessCode);
+    }
+
+    const patient = await User.create({
+      name,
+      role: "communicator",
+      accessCodeHash,
+      preferences: { language, boardContext: "home" },
+    });
+
+    await CaregiverLink.create({
+      communicatorId: patient._id,
+      caregiverId: request.user!.userId,
+      status: "active",
+    });
+
+    auditLog({ route: "/caregivers/patients", actorId: request.user!.userId, outcome: "success" });
+    return reply.code(201).send({ patientId: patient._id.toString(), name: patient.name, accessCode });
   });
 
   // Caller's own linked caregivers/communicators only — never an arbitrary query param.

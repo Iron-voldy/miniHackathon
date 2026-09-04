@@ -3,6 +3,7 @@ import { z } from "zod";
 import { User } from "../models/User";
 import { signToken } from "../lib/jwt";
 import { hashPassword, verifyPassword } from "../lib/password";
+import { hashAccessCode } from "../lib/accessCode";
 import { parse } from "../lib/validate";
 import { auditLog } from "../lib/audit";
 
@@ -34,10 +35,14 @@ const LoginSchema = z.object({
   password: z.string().min(1, "Password is required"),
 });
 
+const PatientCodeLoginSchema = z.object({
+  code: z.string().min(6, "Enter the access code your caregiver gave you"),
+});
+
 function serializeUser(user: {
   _id: { toString(): string };
   name: string;
-  phone: string;
+  phone?: string;
   email?: string;
   role: "communicator" | "caregiver";
   preferences: unknown;
@@ -119,6 +124,27 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     const token = signToken({ sub: user._id.toString(), role: user.role });
     auditLog({ route: "/auth/login", actorId: user._id.toString(), outcome: "success" });
+
+    return reply.code(200).send({ token, user: serializeUser(user) });
+  });
+
+  // Patient device login: just the access code a caregiver generated via
+  // POST /caregivers/patients - no name or phone typed on this device at all.
+  app.post("/auth/patient-code", async (request, reply) => {
+    const result = parse(PatientCodeLoginSchema, request.body);
+    if (!result.success || !result.data) {
+      return reply.code(400).send({ error: result.message });
+    }
+
+    const accessCodeHash = hashAccessCode(result.data.code);
+    const user = await User.findOne({ accessCodeHash, role: "communicator" }).select("+accessCodeHash");
+    if (!user) {
+      auditLog({ route: "/auth/patient-code", outcome: "denied" });
+      return reply.code(401).send({ error: "That access code isn't recognized — ask your caregiver for a new one" });
+    }
+
+    const token = signToken({ sub: user._id.toString(), role: user.role });
+    auditLog({ route: "/auth/patient-code", actorId: user._id.toString(), outcome: "success" });
 
     return reply.code(200).send({ token, user: serializeUser(user) });
   });

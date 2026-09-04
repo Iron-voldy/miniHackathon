@@ -15,8 +15,10 @@ Azure Speech (`si-LK` / `ta-LK` neural voices, TTS) · Nodemailer (caregiver ema
 
 ## Features
 
-- Patient (communicator) login is passwordless — name + phone only, since the device is handed to a
-  non-speaking user
+- Patient (communicator) login is a single access code, never a name or password: a caregiver creates
+  the patient's profile (`POST /caregivers/patients`) and gets a one-time code back; the patient's
+  device logs in with just that code (`POST /auth/patient-code`) — nothing typed on the patient's
+  device at all, and the two accounts are paired automatically at creation
 - Caregivers get a real, password-protected account (`POST /auth/signup` / `POST /auth/login`,
   bcrypt-hashed password) — no Google/OAuth, kept dependency-free — and must supply an email so they
   can also be alerted by mail, not just on their dashboard

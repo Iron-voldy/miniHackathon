@@ -14,7 +14,8 @@ export interface Session {
   userId: string;
   role: Role;
   name: string;
-  phone: string;
+  // A patient created via a caregiver access code never has one.
+  phone?: string;
   email?: string;
 }
 
@@ -62,6 +63,15 @@ export class ApiError extends Error {
   }
 }
 
+// A stored session can outlive its JWT (expiry, or the account/role no longer
+// matches). Without this, an authenticated page just shows a generic "could
+// not load" error forever - registered by SessionProvider so any 401 from an
+// authenticated request drops back to the login screen instead of getting stuck.
+let unauthorizedHandler: (() => void) | null = null;
+export function setUnauthorizedHandler(handler: (() => void) | null): void {
+  unauthorizedHandler = handler;
+}
+
 async function request<T>(
   path: string,
   options: { method?: string; token?: string; body?: unknown } = {}
@@ -88,13 +98,16 @@ async function request<T>(
       json && typeof json === "object" && "error" in json && typeof (json as { error?: unknown }).error === "string"
         ? (json as { error: string }).error
         : `Request failed (${res.status})`;
+    if (res.status === 401 && options.token) unauthorizedHandler?.();
     throw new ApiError(res.status, message);
   }
 
   return json as T;
 }
 
-function toSession(result: { token: string; user: { id: string; name: string; phone: string; email?: string; role: Role } }): Session {
+type AuthUser = { id: string; name: string; phone?: string; email?: string; role: Role };
+
+function toSession(result: { token: string; user: AuthUser }): Session {
   return {
     token: result.token,
     userId: result.user.id,
@@ -106,30 +119,35 @@ function toSession(result: { token: string; user: { id: string; name: string; ph
 }
 
 export const api = {
-  // Patient side: passwordless, name + phone only.
+  // Legacy patient path: passwordless, name + phone. Superseded by patientLogin
+  // (an access code from a caregiver) but kept for backend compatibility.
   async demoLogin(params: { name: string; phone: string }): Promise<Session> {
-    const result = await request<{ token: string; user: { id: string; name: string; phone: string; email?: string; role: Role } }>(
-      "/auth/demo-login",
-      { method: "POST", body: params }
-    );
+    const result = await request<{ token: string; user: AuthUser }>("/auth/demo-login", { method: "POST", body: params });
+    return toSession(result);
+  },
+
+  // Patient side: a caregiver generates this code (see createPatient below) and
+  // the patient's device logs in with just it - no name or phone typed here.
+  async patientLogin(code: string): Promise<Session> {
+    const result = await request<{ token: string; user: AuthUser }>("/auth/patient-code", { method: "POST", body: { code } });
     return toSession(result);
   },
 
   // Caregiver side: real password-protected account (no Google/OAuth for now).
   async signup(params: { name: string; phone: string; email: string; password: string }): Promise<Session> {
-    const result = await request<{ token: string; user: { id: string; name: string; phone: string; email?: string; role: Role } }>(
-      "/auth/signup",
-      { method: "POST", body: params }
-    );
+    const result = await request<{ token: string; user: AuthUser }>("/auth/signup", { method: "POST", body: params });
     return toSession(result);
   },
 
   async login(params: { email: string; password: string }): Promise<Session> {
-    const result = await request<{ token: string; user: { id: string; name: string; phone: string; email?: string; role: Role } }>(
-      "/auth/login",
-      { method: "POST", body: params }
-    );
+    const result = await request<{ token: string; user: AuthUser }>("/auth/login", { method: "POST", body: params });
     return toSession(result);
+  },
+
+  // Caregiver creates a patient profile and gets back a one-time access code
+  // to hand to the patient's device.
+  createPatient(token: string, params: { name: string; language?: Language }): Promise<{ patientId: string; name: string; accessCode: string }> {
+    return request("/caregivers/patients", { method: "POST", token, body: params });
   },
 
   listBoards(token: string, context = "home"): Promise<BoardSummary[]> {
