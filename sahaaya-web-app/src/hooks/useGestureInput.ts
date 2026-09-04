@@ -14,9 +14,22 @@ import {
   shakeStarted,
   shakeCrossedOpposite,
   shakeReturned,
+  shouldPauseForFaceLoss,
   BASELINE_DRIFT_ALPHA,
   type GestureKind,
 } from "./gestureLogic";
+
+// Cap how often MediaPipe actually runs inference - calling detectForVideo on
+// every animation frame (up to 60fps) can stall the main thread on a CPU-only
+// device (no WebGL/GPU delegate available), which shows up as the camera
+// preview visibly freezing for a beat right when the patient moves. ~12fps is
+// still plenty to catch a deliberate hold or nod.
+const INFERENCE_INTERVAL_MS = 80;
+// How long after a selection to average incoming head-pose readings into the
+// confirm baseline before checking for a nod/shake, instead of trusting a
+// single frame - the moment right after a blink/mouth-open release is when
+// the head pose is most likely to still be settling.
+const NOD_SETTLE_MS = 350;
 
 export interface GestureInputOptions {
   enabled: boolean;
@@ -71,9 +84,12 @@ export function useGestureInput(options: GestureInputOptions): GestureInputState
   const gestureStartRef = useRef(0);
   const lastActionAtRef = useRef(0);
   const lastFaceSeenRef = useRef(0);
+  const lastInferenceAtRef = useRef(0);
+  const scanPausedRef = useRef(false);
 
   const baselinePitchRef = useRef<number | null>(null);
   const baselineYawRef = useRef<number | null>(null);
+  const confirmReadyAtRef = useRef(0);
   const headGestureRef = useRef<"none" | "nod" | "shake">("none");
   const shakeDirectionRef = useRef<-1 | 1>(1);
 
@@ -88,6 +104,7 @@ export function useGestureInput(options: GestureInputOptions): GestureInputState
     gestureActiveRef.current = null;
     baselinePitchRef.current = null;
     baselineYawRef.current = null;
+    confirmReadyAtRef.current = 0;
   }, []);
 
   const stop = useCallback(() => {
@@ -148,7 +165,7 @@ export function useGestureInput(options: GestureInputOptions): GestureInputState
         setCameraError(null);
 
         scanTimerRef.current = setInterval(() => {
-          if (awaitingConfirmRef.current) return;
+          if (awaitingConfirmRef.current || scanPausedRef.current) return;
           setHighlightedIndex((i) => {
             const next = itemCount > 0 ? (i + 1) % itemCount : 0;
             highlightedRef.current = next;
@@ -169,23 +186,43 @@ export function useGestureInput(options: GestureInputOptions): GestureInputState
     }
 
     function detectFrame() {
+      const now = performance.now();
+      if (now - lastInferenceAtRef.current < INFERENCE_INTERVAL_MS) return;
+      lastInferenceAtRef.current = now;
+
       const video = videoRef.current;
       const landmarker = landmarkerRef.current;
       if (!video || !landmarker || video.readyState < 2) return;
 
       let result: FaceLandmarkerResult;
       try {
-        result = landmarker.detectForVideo(video, performance.now());
+        result = landmarker.detectForVideo(video, now);
       } catch {
         return;
       }
 
-      const now = performance.now();
       const hasFace = (result.faceLandmarks?.length ?? 0) > 0;
       setFaceDetected(hasFace);
-      if (hasFace) lastFaceSeenRef.current = now;
 
-      if (!hasFace) return;
+      if (!hasFace) {
+        // Don't pause mid-gesture (e.g. tracking briefly drops out while both
+        // eyes are deliberately held closed) - only pause genuinely idle scanning.
+        if (
+          shouldPauseForFaceLoss({
+            nowMs: now,
+            lastFaceSeenAtMs: lastFaceSeenRef.current,
+            faceDetected: hasFace,
+            gestureInProgress: awaitingConfirmRef.current || gestureActiveRef.current !== null,
+            alreadyPaused: scanPausedRef.current,
+          })
+        ) {
+          scanPausedRef.current = true;
+        }
+        return;
+      }
+
+      lastFaceSeenRef.current = now;
+      scanPausedRef.current = false;
 
       const blendshapes = result.faceBlendshapes?.[0]?.categories ?? [];
       const score = (name: string) => blendshapes.find((c) => c.categoryName === name)?.score ?? 0;
@@ -220,6 +257,7 @@ export function useGestureInput(options: GestureInputOptions): GestureInputState
               setAwaitingConfirm(true);
               baselinePitchRef.current = pitchDeg;
               baselineYawRef.current = yawDeg;
+              confirmReadyAtRef.current = now + NOD_SETTLE_MS;
               onSelect(highlightedRef.current);
             }
           } else {
@@ -235,6 +273,15 @@ export function useGestureInput(options: GestureInputOptions): GestureInputState
       if (pitchDeg === null || yawDeg === null) return;
       if (baselinePitchRef.current === null) baselinePitchRef.current = pitchDeg;
       if (baselineYawRef.current === null) baselineYawRef.current = yawDeg;
+
+      if (now < confirmReadyAtRef.current) {
+        // Still settling right after the selection - average toward the true
+        // baseline instead of checking for a nod/shake against a single,
+        // possibly-noisy frame.
+        baselinePitchRef.current = baselinePitchRef.current * 0.8 + pitchDeg * 0.2;
+        baselineYawRef.current = baselineYawRef.current * 0.8 + yawDeg * 0.2;
+        return;
+      }
 
       const pitchDelta = pitchDeg - baselinePitchRef.current;
       const yawDelta = yawDeg - baselineYawRef.current;
