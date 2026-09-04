@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+  font-family: "Noto Sans Sinhala";
+  src: url("/fonts/NotoSansSinhala.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Noto Sans Tamil";
+  src: url("/fonts/NotoSansTamil.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+body {
+  font-family: system-ui, "Noto Sans Sinhala", "Noto Sans Tamil", sans-serif;
+  color: #0f172a;
+  background: #f4f7f6;
+}
+
+button, a, input, select, textarea { -webkit-tap-highlight-color: transparent; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: 3px solid rgba(13, 148, 136, .4);
+  outline-offset: 2px;
+}
+
+.login-shell {
+  position: relative;
+  overflow: clip;
+  background-image: radial-gradient(circle at 20% 15%, rgba(153, 246, 228, .25), transparent 28%),
+    linear-gradient(135deg, #f6faf8 0%, #edf5f1 52%, #f7f6f1 100%);
+}
+
+.login-orb { position: absolute; border-radius: 999px; filter: blur(1px); pointer-events: none; }
+.login-orb-one { width: 24rem; height: 24rem; left: -10rem; bottom: -10rem; background: rgba(20, 184, 166, .1); }
+.login-orb-two { width: 18rem; height: 18rem; right: -7rem; top: -6rem; background: rgba(251, 191, 36, .1); }
+.login-panel { animation: login-enter .55s cubic-bezier(.2,.8,.2,1) both; }
+.login-content { animation: login-content-enter .28s ease-out both; }
+
+@keyframes login-enter {
+  from { opacity: 0; transform: translateY(14px) scale(.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes login-content-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.dashboard-shell { background-image: radial-gradient(circle at 8% 0%, rgba(153, 246, 228, .14), transparent 24%); }
+.dashboard-enter { animation: dashboard-enter .35s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes dashboard-enter { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .login-panel, .login-content, .dashboard-enter { animation: none !important; }
+}

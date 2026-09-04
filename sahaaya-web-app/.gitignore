@@ -1,0 +1,7 @@
+.vercel
+node_modules
+dist
+public/mediapipe
+.env
+.env.local
+*.log
