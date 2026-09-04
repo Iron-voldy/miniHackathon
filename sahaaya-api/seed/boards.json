@@ -1,0 +1,18 @@
+{
+  "boards": [
+    {
+      "id": "home-basic",
+      "title": "Home — Basic",
+      "context": "home",
+      "phraseIds": [
+        "URGENT_STOP", "URGENT_HELP",
+        "QUICK_YES", "QUICK_NO", "QUICK_WAIT", "QUICK_AGAIN", "QUICK_THANKS",
+        "CARE_WATER", "CARE_FOOD", "CARE_TOILET", "CARE_SLEEP",
+        "CARE_SIT_UP", "CARE_TURN_LEFT", "CARE_TURN_RIGHT", "CARE_PILLOW",
+        "CARE_PAIN", "CARE_HOT", "CARE_COLD", "CARE_UNCOMFORTABLE",
+        "PEOPLE_CALL_MOTHER", "PEOPLE_CALL_CAREGIVER",
+        "SOCIAL_HELLO", "SOCIAL_OKAY", "SOCIAL_WANT_TALK"
+      ]
+    }
+  ]
+}

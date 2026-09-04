@@ -1,0 +1,347 @@
+{
+  "info": {
+    "name": "Sahaaya API",
+    "description": "Manual test collection for the Sahaaya AAC backend. Run 'Communicator: Demo Login' and 'Caregiver: Demo Login' first (they auto-save tokens), then the rest in order.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:8080" },
+    { "key": "communicatorToken", "value": "" },
+    { "key": "caregiverToken", "value": "" },
+    { "key": "communicatorPhone", "value": "0771234567" },
+    { "key": "caregiverPhone", "value": "0779876543" },
+    { "key": "boardId", "value": "home-basic" },
+    { "key": "pairingCode", "value": "" },
+    { "key": "requestId", "value": "" },
+    { "key": "customPhraseId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Live",
+          "request": { "method": "GET", "url": "{{baseUrl}}/health/live" }
+        },
+        {
+          "name": "Ready",
+          "request": { "method": "GET", "url": "{{baseUrl}}/health/ready" }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Communicator: Demo Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.token) { pm.collectionVariables.set('communicatorToken', body.token); }",
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/auth/demo-login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Kasun\",\n  \"phone\": \"{{communicatorPhone}}\",\n  \"role\": \"communicator\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Caregiver: Demo Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.token) { pm.collectionVariables.set('caregiverToken', body.token); }",
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/auth/demo-login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Nimal\",\n  \"phone\": \"{{caregiverPhone}}\",\n  \"role\": \"caregiver\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Demo Login - invalid phone (expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/v1/auth/demo-login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Bad\",\n  \"phone\": \"12345\",\n  \"role\": \"communicator\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Profiles",
+      "item": [
+        {
+          "name": "Get my profile",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{communicatorToken}}" }],
+            "url": "{{baseUrl}}/api/v1/profiles/me"
+          }
+        },
+        {
+          "name": "Update preferences (language=si)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{communicatorToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/profiles/me/preferences",
+            "body": { "mode": "raw", "raw": "{\n  \"language\": \"si\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Boards",
+      "item": [
+        {
+          "name": "List boards",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{communicatorToken}}" }],
+            "url": "{{baseUrl}}/api/v1/boards?context=home"
+          }
+        },
+        {
+          "name": "Get board with phrases",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{communicatorToken}}" }],
+            "url": "{{baseUrl}}/api/v1/boards/{{boardId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Phrase Ranking (AI)",
+      "item": [
+        {
+          "name": "Rank phrases",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{communicatorToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/phrases/rank",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"boardId\": \"{{boardId}}\",\n  \"recentPhraseIds\": [\"CARE_WATER\"]\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Custom Phrases",
+      "item": [
+        {
+          "name": "Create custom phrase",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.id) { pm.collectionVariables.set('customPhraseId', body.id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{communicatorToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/custom-phrases",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"text\": \"Please dim the lights\",\n  \"language\": \"en\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Approve custom phrase",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{communicatorToken}}" }],
+            "url": "{{baseUrl}}/api/v1/custom-phrases/{{customPhraseId}}/approve"
+          }
+        },
+        {
+          "name": "TTS for custom phrase",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{communicatorToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/phrases/{{customPhraseId}}/tts",
+            "body": { "mode": "raw", "raw": "{\n  \"language\": \"en\"\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Caregivers",
+      "item": [
+        {
+          "name": "1. Communicator: generate pairing code",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.pairingCode) { pm.collectionVariables.set('pairingCode', body.pairingCode); }",
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{communicatorToken}}" }],
+            "url": "{{baseUrl}}/api/v1/caregivers/pair"
+          }
+        },
+        {
+          "name": "2. Caregiver: accept pairing code",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{caregiverToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregivers/pair/accept",
+            "body": { "mode": "raw", "raw": "{\n  \"pairingCode\": \"{{pairingCode}}\"\n}" }
+          }
+        },
+        {
+          "name": "3. List my caregivers/communicators",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{communicatorToken}}" }],
+            "url": "{{baseUrl}}/api/v1/caregivers"
+          }
+        },
+        {
+          "name": "Negative: caregiver tries to generate a code (expect 403)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }],
+            "url": "{{baseUrl}}/api/v1/caregivers/pair"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Requests",
+      "item": [
+        {
+          "name": "1. Create request (confirmed=true)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "if (body.id) { pm.collectionVariables.set('requestId', body.id); }",
+                  "pm.test('status is 201 or 200', () => [200, 201].includes(pm.response.code));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{communicatorToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phraseId\": \"CARE_WATER\",\n  \"inputMode\": \"touch\",\n  \"confirmed\": true,\n  \"clientRequestId\": \"{{$guid}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Negative: confirmed=false (expect 400)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{communicatorToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/requests",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"phraseId\": \"CARE_WATER\",\n  \"inputMode\": \"touch\",\n  \"confirmed\": false,\n  \"clientRequestId\": \"{{$guid}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "2. Get request by id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{communicatorToken}}" }],
+            "url": "{{baseUrl}}/api/v1/requests/{{requestId}}"
+          }
+        },
+        {
+          "name": "3. Caregiver acknowledges request",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }],
+            "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/acknowledge"
+          }
+        },
+        {
+          "name": "4. Communicator cancels a request",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{communicatorToken}}" }],
+            "url": "{{baseUrl}}/api/v1/requests/{{requestId}}/cancel"
+          }
+        },
+        {
+          "name": "SSE: stream inbox (open in browser, not Postman Send)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }],
+            "url": "{{baseUrl}}/api/v1/requests/stream"
+          }
+        }
+      ]
+    }
+  ]
+}

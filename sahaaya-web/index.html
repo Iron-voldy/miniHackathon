@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sahaaya — Manual Test Frontend</title>
+<style>
+  :root {
+    --bg: #f4f6f8;
+    --card: #ffffff;
+    --primary: #2563eb;
+    --primary-dark: #1d4ed8;
+    --danger: #dc2626;
+    --success: #16a34a;
+    --text: #111827;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    background: var(--primary);
+    color: white;
+    padding: 14px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  header h1 { margin: 0; font-size: 1.2rem; }
+  header .right { display: flex; gap: 10px; align-items: center; font-size: 0.85rem; }
+  nav {
+    display: flex;
+    gap: 6px;
+    padding: 10px 20px;
+    background: white;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  nav button {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 14px;
+    cursor: pointer;
+    font-size: 0.85rem;
+  }
+  nav button.active { background: var(--primary); color: white; border-color: var(--primary); }
+  main { padding: 20px; max-width: 900px; margin: 0 auto; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card h2 { margin-top: 0; }
+  label { display: block; margin: 10px 0 4px; font-size: 0.85rem; color: var(--muted); }
+  input, select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 1rem;
+  }
+  button.primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    margin-top: 14px;
+  }
+  button.primary:hover { background: var(--primary-dark); }
+  button.secondary {
+    background: white;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 18px;
+    cursor: pointer;
+  }
+  button.danger { background: var(--danger); color: white; border: none; border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+  .error-text { color: var(--danger); font-size: 0.85rem; margin-top: 6px; }
+  .success-text { color: var(--success); font-size: 0.85rem; margin-top: 6px; }
+  .role-toggle { display: flex; gap: 10px; margin: 10px 0; }
+  .role-toggle label {
+    flex: 1;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+    cursor: pointer;
+    margin: 0;
+    color: var(--text);
+  }
+  .role-toggle input { width: auto; }
+  .phrase-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
+  .phrase-tile {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 10px;
+    background: white;
+    cursor: pointer;
+    text-align: center;
+    font-size: 0.95rem;
+    transition: transform 0.05s;
+  }
+  .phrase-tile:hover { border-color: var(--primary); transform: translateY(-1px); }
+  .phrase-tile .category { display: block; font-size: 0.65rem; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; }
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center; z-index: 50;
+  }
+  .modal { background: white; border-radius: 12px; padding: 24px; max-width: 360px; width: 90%; text-align: center; }
+  .modal .modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+  .modal .modal-actions button { flex: 1; }
+  .hidden { display: none !important; }
+  .request-item {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .status-badge {
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border-radius: 999px;
+    background: #eef2ff;
+    color: var(--primary);
+    text-transform: uppercase;
+  }
+  .status-badge.seen, .status-badge.completed { background: #ecfdf5; color: var(--success); }
+  .status-badge.cancelled, .status-badge.failed { background: #fef2f2; color: var(--danger); }
+  code.pairing-code { font-size: 1.6rem; letter-spacing: 3px; font-weight: bold; color: var(--primary); }
+  .problem-blurb { font-size: 0.9rem; color: var(--muted); border-left: 3px solid var(--primary); padding-left: 12px; margin-top: 16px; }
+  footer { text-align: center; color: var(--muted); font-size: 0.75rem; padding: 20px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Sahaaya — Manual Test UI</h1>
+  <div class="right" id="whoami"></div>
+</header>
+
+<nav id="nav" class="hidden">
+  <button data-screen="board">Board</button>
+  <button data-screen="caregivers">Caregivers</button>
+  <button data-screen="inbox">Caregiver Inbox</button>
+  <button data-screen="settings">Settings</button>
+</nav>
+
+<main>
+
+  <!-- LOGIN -->
+  <section id="screen-login" class="card">
+    <h2>Login</h2>
+    <p class="problem-blurb">
+      Sahaaya helps a non-speaking person (e.g. after a stroke, or living with ALS or cerebral palsy)
+      select a phrase on a board, confirm it, have it spoken aloud in Sinhala, Tamil, or English, and
+      notify a linked caregiver who can acknowledge it. It is not speech therapy, diagnosis, or an
+      emergency service.
+    </p>
+    <label>API base URL</label>
+    <input id="apiBase" value="http://127.0.0.1:8080" />
+    <label>Name</label>
+    <input id="loginName" placeholder="e.g. Kasun" />
+    <label>Phone (Sri Lankan mobile)</label>
+    <input id="loginPhone" placeholder="077 123 4567" />
+    <div class="role-toggle">
+      <label><input type="radio" name="role" value="communicator" checked /> Communicator</label>
+      <label><input type="radio" name="role" value="caregiver" /> Caregiver</label>
+    </div>
+    <button class="primary" id="loginBtn">Log in</button>
+    <div id="loginError" class="error-text hidden"></div>
+  </section>
+
+  <!-- BOARD -->
+  <section id="screen-board" class="card hidden">
+    <h2>Board</h2>
+    <div id="boardMeta" style="color:var(--muted); font-size:0.85rem; margin-bottom: 10px;"></div>
+    <div id="phraseGrid" class="phrase-grid"></div>
+  </section>
+
+  <!-- CAREGIVERS -->
+  <section id="screen-caregivers" class="card hidden">
+    <h2>Caregiver Pairing</h2>
+    <div id="communicatorPairing" class="hidden">
+      <p>Generate a code and share it with your caregiver's device.</p>
+      <button class="primary" id="generateCodeBtn">Generate pairing code</button>
+      <div id="pairingCodeDisplay" style="margin-top:12px;"></div>
+    </div>
+    <div id="caregiverPairing" class="hidden">
+      <p>Enter the pairing code shown on the communicator's device.</p>
+      <label>Pairing code</label>
+      <input id="acceptCodeInput" placeholder="ABC123" />
+      <button class="primary" id="acceptCodeBtn">Accept code</button>
+    </div>
+    <div id="pairingMsg" style="margin-top:10px;"></div>
+    <h3>Linked</h3>
+    <div id="linkedList"></div>
+  </section>
+
+  <!-- CAREGIVER INBOX -->
+  <section id="screen-inbox" class="card hidden">
+    <h2>Caregiver Inbox</h2>
+    <p style="color:var(--muted); font-size:0.85rem;">Live via SSE (GET /requests/stream). Caregiver role only.</p>
+    <div id="inboxList"></div>
+  </section>
+
+  <!-- SETTINGS -->
+  <section id="screen-settings" class="card hidden">
+    <h2>Settings</h2>
+    <label>Display language</label>
+    <select id="languageSelect">
+      <option value="en">English</option>
+      <option value="si">Sinhala</option>
+      <option value="ta">Tamil</option>
+    </select>
+    <button class="secondary" style="margin-top:14px;" id="logoutBtn">Log out</button>
+  </section>
+
+</main>
+
+<!-- CONFIRM MODAL -->
+<div id="confirmModal" class="modal-backdrop hidden">
+  <div class="modal">
+    <h3>Send this?</h3>
+    <p id="confirmText" style="font-size:1.3rem; font-weight:600;"></p>
+    <div class="modal-actions">
+      <button class="secondary" id="confirmCancel">Cancel</button>
+      <button class="primary" id="confirmSend">Confirm & Send</button>
+    </div>
+  </div>
+</div>
+
+<footer>Sahaaya scratch test UI — not for production use.</footer>
+
+<script>
+(function () {
+  const state = {
+    token: localStorage.getItem("sahaaya_token") || "",
+    user: JSON.parse(localStorage.getItem("sahaaya_user") || "null"),
+    language: localStorage.getItem("sahaaya_lang") || "en",
+    board: null,
+    pendingPhrase: null,
+    inboxAbort: null,
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const apiBase = () => $("apiBase").value.replace(/\/$/, "");
+
+  function authHeaders(extra) {
+    return Object.assign({ Authorization: "Bearer " + state.token }, extra || {});
+  }
+
+  async function api(path, options) {
+    const res = await fetch(apiBase() + "/api/v1" + path, options);
+    let body = null;
+    try { body = await res.json(); } catch (_) { /* no body */ }
+    if (!res.ok) {
+      const message = (body && body.error) || ("Request failed (" + res.status + ")");
+      throw new Error(message);
+    }
+    return body;
+  }
+
+  function saveSession(token, user) {
+    state.token = token;
+    state.user = user;
+    localStorage.setItem("sahaaya_token", token);
+    localStorage.setItem("sahaaya_user", JSON.stringify(user));
+  }
+
+  function clearSession() {
+    state.token = "";
+    state.user = null;
+    localStorage.removeItem("sahaaya_token");
+    localStorage.removeItem("sahaaya_user");
+    if (state.inboxAbort) state.inboxAbort.abort();
+  }
+
+  function showScreen(name) {
+    document.querySelectorAll("main > section").forEach((el) => el.classList.add("hidden"));
+    $("screen-" + name).classList.remove("hidden");
+    document.querySelectorAll("nav button").forEach((b) => b.classList.toggle("active", b.dataset.screen === name));
+    if (name === "board") loadBoard();
+    if (name === "caregivers") loadCaregiverScreen();
+    if (name === "inbox") startInboxStream();
+    else stopInboxStream();
+  }
+
+  function renderShell() {
+    if (!state.token) {
+      $("nav").classList.add("hidden");
+      $("whoami").textContent = "";
+      $("screen-login").classList.remove("hidden");
+      ["board", "caregivers", "inbox", "settings"].forEach((s) => $("screen-" + s).classList.add("hidden"));
+      return;
+    }
+    $("nav").classList.remove("hidden");
+    $("whoami").textContent = state.user.name + " (" + state.user.role + ")";
+    $("screen-login").classList.add("hidden");
+    $("languageSelect").value = state.language;
+    showScreen("board");
+  }
+
+  // ---------- LOGIN ----------
+  $("loginBtn").addEventListener("click", async () => {
+    $("loginError").classList.add("hidden");
+    const name = $("loginName").value.trim();
+    const phone = $("loginPhone").value.trim();
+    const role = document.querySelector('input[name="role"]:checked').value;
+    try {
+      const body = await api("/auth/demo-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, phone, role }),
+      });
+      saveSession(body.token, body.user);
+      renderShell();
+    } catch (err) {
+      $("loginError").textContent = err.message;
+      $("loginError").classList.remove("hidden");
+    }
+  });
+
+  document.querySelectorAll("nav button").forEach((btn) => {
+    btn.addEventListener("click", () => showScreen(btn.dataset.screen));
+  });
+
+  $("logoutBtn").addEventListener("click", () => {
+    clearSession();
+    renderShell();
+  });
+
+  $("languageSelect").addEventListener("change", (e) => {
+    state.language = e.target.value;
+    localStorage.setItem("sahaaya_lang", state.language);
+    renderPhraseGrid();
+  });
+
+  // ---------- BOARD ----------
+  async function loadBoard() {
+    try {
+      const boards = await api("/boards?context=home", { headers: authHeaders() });
+      if (boards.length === 0) {
+        $("boardMeta").textContent = "No boards found — did you run `npm run seed`?";
+        return;
+      }
+      state.board = await api("/boards/" + boards[0].id, { headers: authHeaders() });
+      $("boardMeta").textContent = state.board.title + " (" + state.board.phrases.length + " phrases)";
+      renderPhraseGrid();
+    } catch (err) {
+      $("boardMeta").textContent = "Error: " + err.message;
+    }
+  }
+
+  function renderPhraseGrid() {
+    if (!state.board) return;
+    const grid = $("phraseGrid");
+    grid.innerHTML = "";
+    state.board.phrases.forEach((phrase) => {
+      const tile = document.createElement("div");
+      tile.className = "phrase-tile";
+      const label = phrase[{ en: "english", si: "sinhala", ta: "tamil" }[state.language]] || phrase.english;
+      tile.innerHTML = '<span class="category">' + phrase.category + "</span>" + label;
+      tile.addEventListener("click", () => openConfirmModal(phrase, label));
+      grid.appendChild(tile);
+    });
+  }
+
+  function openConfirmModal(phrase, label) {
+    state.pendingPhrase = phrase;
+    $("confirmText").textContent = label;
+    $("confirmModal").classList.remove("hidden");
+  }
+
+  $("confirmCancel").addEventListener("click", () => {
+    state.pendingPhrase = null;
+    $("confirmModal").classList.add("hidden");
+  });
+
+  $("confirmSend").addEventListener("click", async () => {
+    if (!state.pendingPhrase) return;
+    try {
+      await api("/requests", {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({
+          phraseId: state.pendingPhrase.id,
+          inputMode: "touch",
+          confirmed: true,
+          clientRequestId: crypto.randomUUID(),
+        }),
+      });
+      $("confirmModal").classList.add("hidden");
+      alert("Sent!");
+    } catch (err) {
+      alert("Could not send: " + err.message);
+    }
+  });
+
+  // ---------- CAREGIVERS ----------
+  async function loadCaregiverScreen() {
+    $("communicatorPairing").classList.toggle("hidden", state.user.role !== "communicator");
+    $("caregiverPairing").classList.toggle("hidden", state.user.role !== "caregiver");
+    $("pairingMsg").textContent = "";
+    try {
+      const links = await api("/caregivers", { headers: authHeaders() });
+      $("linkedList").innerHTML = links.length
+        ? links.map((l) => "<div>" + (l.communicator?.name || "?") + " ↔ " + (l.caregiver?.name || "(pending)") + "</div>").join("")
+        : "<div style='color:var(--muted)'>No active links yet.</div>";
+    } catch (err) {
+      $("linkedList").textContent = "Error: " + err.message;
+    }
+  }
+
+  $("generateCodeBtn").addEventListener("click", async () => {
+    try {
+      const body = await api("/caregivers/pair", { method: "POST", headers: authHeaders() });
+      $("pairingCodeDisplay").innerHTML = "Code: <code class='pairing-code'>" + body.pairingCode + "</code>";
+    } catch (err) {
+      $("pairingMsg").innerHTML = "<span class='error-text'>" + err.message + "</span>";
+    }
+  });
+
+  $("acceptCodeBtn").addEventListener("click", async () => {
+    try {
+      await api("/caregivers/pair/accept", {
+        method: "POST",
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ pairingCode: $("acceptCodeInput").value.trim() }),
+      });
+      $("pairingMsg").innerHTML = "<span class='success-text'>Paired successfully.</span>";
+      loadCaregiverScreen();
+    } catch (err) {
+      $("pairingMsg").innerHTML = "<span class='error-text'>" + err.message + "</span>";
+    }
+  });
+
+  // ---------- CAREGIVER INBOX (manual SSE parsing via fetch, so we can send an Authorization header) ----------
+  function stopInboxStream() {
+    if (state.inboxAbort) {
+      state.inboxAbort.abort();
+      state.inboxAbort = null;
+    }
+  }
+
+  const inboxItems = new Map();
+
+  function renderInbox() {
+    const list = $("inboxList");
+    const items = Array.from(inboxItems.values()).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    list.innerHTML = items.length ? "" : "<div style='color:var(--muted)'>No requests yet.</div>";
+    items.forEach((reqItem) => {
+      const row = document.createElement("div");
+      row.className = "request-item";
+      const canAck = reqItem.status === "pending" || reqItem.status === "delivered";
+      row.innerHTML =
+        "<div><strong>" + reqItem.resolvedText + "</strong><br/><span class='status-badge " + reqItem.status + "'>" + reqItem.status + "</span></div>";
+      if (canAck) {
+        const btn = document.createElement("button");
+        btn.className = "primary";
+        btn.textContent = "Acknowledge";
+        btn.addEventListener("click", async () => {
+          try {
+            await api("/requests/" + reqItem.id + "/acknowledge", { method: "POST", headers: authHeaders() });
+          } catch (err) {
+            alert("Could not acknowledge: " + err.message);
+          }
+        });
+        row.appendChild(btn);
+      }
+      list.appendChild(row);
+    });
+  }
+
+  async function startInboxStream() {
+    if (state.user.role !== "caregiver") {
+      $("inboxList").innerHTML = "<div style='color:var(--muted)'>Log in as a caregiver to see the inbox.</div>";
+      return;
+    }
+    stopInboxStream();
+    inboxItems.clear();
+    renderInbox();
+
+    const controller = new AbortController();
+    state.inboxAbort = controller;
+
+    try {
+      const res = await fetch(apiBase() + "/api/v1/requests/stream", {
+        headers: authHeaders(),
+        signal: controller.signal,
+      });
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const frames = buffer.split("\n\n");
+        buffer = frames.pop();
+        for (const frame of frames) {
+          const line = frame.split("\n").find((l) => l.startsWith("data: "));
+          if (!line) continue;
+          try {
+            const reqItem = JSON.parse(line.slice(6));
+            inboxItems.set(reqItem.id, reqItem);
+            renderInbox();
+          } catch (_) { /* ignore malformed frame */ }
+        }
+      }
+    } catch (err) {
+      if (err.name !== "AbortError") {
+        $("inboxList").innerHTML = "<div class='error-text'>Stream error: " + err.message + "</div>";
+      }
+    }
+  }
+
+  renderShell();
+})();
+</script>
+
+</body>
+</html>
