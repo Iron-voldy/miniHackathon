@@ -9,6 +9,9 @@ export interface UserDoc {
   name: string;
   phone: string;
   role: Role;
+  // Required for caregivers so a new request can also be emailed to them, not
+  // just pushed to their dashboard; optional for communicators.
+  email?: string;
   preferences: {
     language: Language;
     boardContext: BoardContext;
@@ -22,6 +25,7 @@ const UserSchema = new Schema<UserDoc>(
     name: { type: String, required: true, trim: true, maxlength: 80 },
     phone: { type: String, required: true, unique: true },
     role: { type: String, enum: ["communicator", "caregiver"], required: true },
+    email: { type: String, trim: true, lowercase: true },
     preferences: {
       language: { type: String, enum: ["en", "si", "ta"], default: "en" },
       boardContext: { type: String, enum: ["home", "ward", "general"], default: "home" },

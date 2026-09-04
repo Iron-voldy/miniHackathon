@@ -11,17 +11,23 @@ Built per `docs/HACKATHON_BACKEND_BUILD_GUIDE.md` (kept at the repo root here as
 ## Tech stack
 
 Node 22 · Fastify · TypeScript · Zod · MongoDB (Mongoose) · OpenAI (`gpt-4o-mini`, phrase ranking) ·
-Azure Speech (`si-LK` / `ta-LK` neural voices, TTS).
+Azure Speech (`si-LK` / `ta-LK` neural voices, TTS) · Nodemailer (caregiver email alerts).
 
 ## Features
 
-- Demo login (no password) with role selection (communicator/caregiver)
+- Demo login (no password) with role selection (communicator/caregiver); caregivers must also supply
+  an email address so they can be alerted by mail, not just on their dashboard
 - Boards & phrases (24 phrases across 8 categories, in English/Sinhala/Tamil)
 - Custom phrases with communicator approval
 - AI-powered phrase ranking (OpenAI, 2s timeout, deterministic fallback, allow-list validated)
 - Text-to-speech for custom phrases (Azure Speech, cached, degrades to text-only on failure)
 - Caregiver pairing (code-based) and an authenticated caregiver inbox
 - Communication requests: confirmation-gated, idempotent, SSE-streamed, acknowledge/cancel
+- Exactly two patient-side selection modes: `touch` (direct tap) and `face` (client-side hands-free
+  gesture/dwell-select — no camera or biometric data ever reaches this API, invariant #7)
+- Every new request notifies each linked caregiver on **two channels**: their live dashboard (SSE)
+  and an email (best-effort, degrades silently if SMTP isn't configured)
+- No speech-therapy, admin-dashboard, or monthly-report features — intentionally out of scope
 
 ## Project structure
 
@@ -29,9 +35,9 @@ Azure Speech (`si-LK` / `ta-LK` neural voices, TTS).
 src/
   app.ts / server.ts     Fastify instance (app.ts has no .listen(), so tests can import it directly)
   lib/                    env validation, db connection, JWT, timeout wrapper, audit log, auth guard
-  models/                 8 Mongoose collections
+  models/                 9 Mongoose collections
   routes/                 health, auth, profiles, boards, custom-phrases, phrases (rank+tts), caregivers, requests
-  services/               ranker (deterministic), llmRanker (OpenAI + allow-list), tts (Azure)
+  services/               ranker (deterministic), llmRanker (OpenAI + allow-list), tts (Azure), email (Nodemailer)
 seed/                     boards.json, phrases.json, seed.ts
 test/                     vitest suite (in-memory MongoDB, no external calls)
 ```
@@ -79,7 +85,8 @@ except `/auth/demo-login` and `/health/*` require `Authorization: Bearer <jwt>`.
    see especially `routes/caregivers.ts` and `routes/requests.ts`.
 7. No camera/biometric data is accepted anywhere in this API.
 8. No `VITE_`-prefixed or client-exposed variable holds a secret; all keys live server-side in `.env`.
-9. OpenAI and Azure Speech calls are wrapped in `withTimeout` (2s) with a deterministic fallback.
+9. OpenAI, Azure Speech, and email calls are all wrapped in `withTimeout` with a deterministic
+   fallback — a caregiver alert email that fails or times out never fails the request itself.
 10. `delivered` vs `acknowledged` are distinct states on `CommunicationRequest`.
 11. `lib/audit.ts` writes route/actor/outcome audit events; never raw phrase text or credentials.
 
@@ -97,6 +104,10 @@ except `/auth/demo-login` and `/health/*` require `Authorization: Bearer <jwt>`.
 > Sinhala/Tamil phrase translations in `seed/phrases.json` are AI-drafted sample data, not yet
 > reviewed by a native speaker — flagging this explicitly per the hackathon's permitted use of
 > AI-generated sample/test data.
+>
+> Nodemailer (Gmail SMTP) powers the caregiver email alert at runtime — also not used to write code.
+> Speech-therapy, admin-dashboard, and monthly-report features from an earlier, larger prior version
+> of this project were deliberately never brought into this build.
 
 ## AI Prompt Log (hackathon spec §2.2)
 
@@ -110,6 +121,8 @@ except `/auth/demo-login` and `/health/*` require `Authorization: Bearer <jwt>`.
 | 6 | Claude Code | "Implement caregivers routes per §7.7 — pairing/accept/list, identity from JWT only, never the body" | Caregiver pairing | Wrote tests for a caregiver trying to generate a code and a communicator trying to accept one (both must 403), plus an attempted id-smuggling test |
 | 7 | Claude Code | "Write seed/seed.ts and seed/phrases.json per §6 — 24 phrases across 8 categories in en/si/ta" | Seed data | Reviewed each translation manually; noted in this README that Sinhala/Tamil text is AI-drafted and not yet native-speaker reviewed |
 | 8 | Claude Code | "Write failure-path tests per §8 for auth, requests, caregivers, and phrases/rank, using mongodb-memory-server so the suite needs no real database" | Test suite | Ran `npm test`; confirmed all failure-path assertions (400/403/404/422) hit the intended branch, not a generic error handler |
+| 9 | Claude Code | "Independent code review of the whole backend against the guide's 11 invariants" | Quality gate | A code-quality review agent flagged that `delivered` and `acknowledged` were conflated (invariant #10) and that `auditLog` was only wired into `/auth/demo-login`; fixed both directly (SSE poll now marks a delivery `delivered` the moment it's actually pushed to that caregiver, and `auditLog` calls were added to caregiver pairing, request creation, acknowledge, and cancel) |
+| 10 | Claude Code | "Simplify inputMode to exactly two patient-side selection modes (touch, face), add an email field to User required for caregivers, and email each linked caregiver (Nodemailer, best-effort with timeout+fallback) whenever a communicator sends a new request" | Face-mode simplification + caregiver email alerts | Smoke-tested against the live Atlas DB with curl: a caregiver login without email returns the friendly 400; a `touch`-and-`face` request both create successfully; confirmed the email dispatch is fire-and-forget (never delays or fails the `POST /requests` response, even before SMTP creds were validated) |
 
 *(add a row per additional prompt as the build continues)*
 

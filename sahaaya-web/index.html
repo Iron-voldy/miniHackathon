@@ -185,6 +185,10 @@
       <label><input type="radio" name="role" value="communicator" checked /> Communicator</label>
       <label><input type="radio" name="role" value="caregiver" /> Caregiver</label>
     </div>
+    <div id="caregiverEmailField" class="hidden">
+      <label>Email (required for caregivers - requests are emailed here too)</label>
+      <input id="loginEmail" placeholder="you@example.com" />
+    </div>
     <button class="primary" id="loginBtn">Log in</button>
     <div id="loginError" class="error-text hidden"></div>
   </section>
@@ -320,16 +324,24 @@
   }
 
   // ---------- LOGIN ----------
+  document.querySelectorAll('input[name="role"]').forEach((radio) => {
+    radio.addEventListener("change", () => {
+      const isCaregiver = document.querySelector('input[name="role"]:checked').value === "caregiver";
+      $("caregiverEmailField").classList.toggle("hidden", !isCaregiver);
+    });
+  });
+
   $("loginBtn").addEventListener("click", async () => {
     $("loginError").classList.add("hidden");
     const name = $("loginName").value.trim();
     const phone = $("loginPhone").value.trim();
     const role = document.querySelector('input[name="role"]:checked').value;
+    const email = $("loginEmail").value.trim();
     try {
       const body = await api("/auth/demo-login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone, role }),
+        body: JSON.stringify({ name, phone, role, email: email || undefined }),
       });
       saveSession(body.token, body.user);
       renderShell();

@@ -1,0 +1,8 @@
+# Reference clone of the prior project - inspected locally, never committed here.
+sahaaya-reference/
+
+# Root-level safety net (each app also has its own .gitignore).
+node_modules/
+dist/
+.env
+*.log

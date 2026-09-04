@@ -54,7 +54,7 @@ export async function caregiverRoutes(app: FastifyInstance): Promise<void> {
     const link = await CaregiverLink.findOneAndUpdate(
       { pairingCode: result.data.pairingCode, status: "pending" },
       { $set: { caregiverId: request.user!.userId, status: "active" }, $unset: { pairingCode: "" } },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!link) {

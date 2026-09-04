@@ -10,12 +10,13 @@ import { parse } from "../lib/validate";
 import { env } from "../lib/env";
 import { auditLog } from "../lib/audit";
 import { User } from "../models/User";
+import { sendCaregiverRequestEmail } from "../services/email";
 
 const CreateRequestSchema = z
   .object({
     phraseId: z.string().optional(),
     customPhraseId: z.string().optional(),
-    inputMode: z.enum(["touch", "row_column_scan", "blink_scan", "hum_scan"], {
+    inputMode: z.enum(["touch", "face"], {
       error: "Invalid input mode",
     }),
     // Confirmation is enforced in code, never trusted from the client (invariant #1).
@@ -113,6 +114,13 @@ export async function requestRoutes(app: FastifyInstance): Promise<void> {
         deliveries,
       });
       auditLog({ route: "/requests", actorId: communicatorId, requestId: created._id.toString(), outcome: "success" });
+
+      // Secondary delivery channel: email each linked caregiver too, not just the
+      // dashboard/SSE push. Fire-and-forget - never delays or fails the response.
+      notifyCaregiversByEmail(communicatorId, deliveries.map((d) => d.caregiverId), resolvedText).catch(
+        () => undefined
+      );
+
       return reply.code(201).send(serializeRequest(created));
     } catch (error) {
       // Duplicate clientRequestId: idempotent retry returns the existing document,
@@ -255,7 +263,7 @@ export async function requestRoutes(app: FastifyInstance): Promise<void> {
     const doc = await CommunicationRequest.findOneAndUpdate(
       { _id: id, communicatorId: userId },
       { $set: { status: "cancelled" } },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!doc) {
@@ -269,4 +277,30 @@ export async function requestRoutes(app: FastifyInstance): Promise<void> {
 
 function isDuplicateKeyError(error: unknown): boolean {
   return typeof error === "object" && error !== null && (error as { code?: number }).code === 11000;
+}
+
+async function notifyCaregiversByEmail(
+  communicatorId: string,
+  caregiverIds: Types.ObjectId[],
+  phraseText: string
+): Promise<void> {
+  const [communicator, caregivers] = await Promise.all([
+    User.findById(communicatorId).select("name").lean(),
+    User.find({ _id: { $in: caregiverIds } })
+      .select("email")
+      .lean(),
+  ]);
+  if (!communicator) return;
+
+  await Promise.all(
+    caregivers
+      .filter((c) => Boolean(c.email))
+      .map((c) =>
+        sendCaregiverRequestEmail({
+          to: c.email as string,
+          communicatorName: communicator.name,
+          phraseText,
+        })
+      )
+  );
 }

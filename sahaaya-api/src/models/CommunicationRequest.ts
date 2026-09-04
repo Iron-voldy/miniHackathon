@@ -1,6 +1,9 @@
 import { Schema, model, Types } from "mongoose";
 
-export type InputMode = "touch" | "row_column_scan" | "blink_scan" | "hum_scan";
+// Only two patient-side selection modes are supported: direct touch, and
+// hands-free face/gesture dwell-select (client-side MediaPipe, never sends
+// camera frames to the backend - invariant #7).
+export type InputMode = "touch" | "face";
 export type RequestStatus =
   | "pending"
   | "delivered"
@@ -62,7 +65,7 @@ const CommunicationRequestSchema = new Schema<CommunicationRequestDoc>(
     resolvedText: { type: String, required: true },
     inputMode: {
       type: String,
-      enum: ["touch", "row_column_scan", "blink_scan", "hum_scan"],
+      enum: ["touch", "face"],
       required: true,
     },
     clientRequestId: { type: String, required: true, unique: true },

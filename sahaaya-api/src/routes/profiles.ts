@@ -39,7 +39,7 @@ export async function profileRoutes(app: FastifyInstance): Promise<void> {
     const user = await User.findByIdAndUpdate(
       request.user!.userId,
       { $set: update },
-      { new: true }
+      { returnDocument: "after" }
     );
     if (!user) {
       return reply.code(404).send({ error: "User not found" });

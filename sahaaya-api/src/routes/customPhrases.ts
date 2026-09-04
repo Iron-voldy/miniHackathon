@@ -39,7 +39,7 @@ export async function customPhraseRoutes(app: FastifyInstance): Promise<void> {
     const customPhrase = await CustomPhrase.findOneAndUpdate(
       { _id: id, ownerUserId: request.user!.userId },
       { $set: { approvedByCommunicator: true } },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!customPhrase) {
