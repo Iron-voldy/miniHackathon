@@ -83,12 +83,14 @@ row-column scan and blink-only scan modes — not carried over).
 
 ## Deployment
 
-Deployed to **Vercel** (production): https://sahaaya-web.vercel.app — connect the GitHub repo, Vercel
-auto-detects Vite (build command `vite build`, output `dist`), set `VITE_API_BASE_URL` to the
-deployed backend's HTTPS URL in the project's Environment Variables, redeploy.
+**Live**: https://sahaaya-web.vercel.app, talking to the live backend at
+https://72-62-255-113.sslip.io (`VITE_API_BASE_URL`, set as a Vercel production environment
+variable — verified end-to-end with a real CORS + login round trip from this exact origin).
 
-Backend is deployed separately (see `../sahaaya-api/README.md`) — CORS on that backend's
-`ALLOWED_ORIGINS` must include this Vercel URL, or every request will fail in the browser.
+To redeploy: connect the GitHub repo to Vercel (auto-detects Vite: build command `vite build`,
+output `dist`), set `VITE_API_BASE_URL` in the project's Environment Variables, `vercel deploy --prod`.
+The backend's `ALLOWED_ORIGINS` must include this exact origin or every request fails CORS in the
+browser (see `../sahaaya-api/README.md`).
 
 ## AI declaration (hackathon spec §2.3)
 

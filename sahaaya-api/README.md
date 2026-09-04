@@ -128,6 +128,14 @@ except `/auth/demo-login` and `/health/*` require `Authorization: Bearer <jwt>`.
 
 ## Deployment
 
-See `HACKATHON_BACKEND_BUILD_GUIDE.md` §9. Deploy to Render, health check path `/health/ready`, run
-`npm run seed` once after first deploy, and test the deployed URL from an incognito window before
-submitting.
+**Live**: https://72-62-255-113.sslip.io (deployed to a shared VPS under `pm2` + `nginx`, port 4400
+internally, HTTPS via Let's Encrypt against the `sslip.io` hostname since no DNS record was available
+for a nicer subdomain — swap in a real subdomain later by adding a DNS A record and re-running
+`certbot --nginx -d your.subdomain`, no application changes needed).
+
+General instructions (§9 of `HACKATHON_BACKEND_BUILD_GUIDE.md` describes a Render-based alternative,
+equally valid): build (`npm run build`), run the compiled `dist/src/server.js` under a process
+manager (`pm2 start dist/src/server.js --name sahaaya-api`), put it behind a reverse proxy for TLS,
+health check path `/health/ready`, run `npm run seed` once after first deploy, and test the deployed
+URL from an incognito window before submitting. `ALLOWED_ORIGINS` in `.env` must include the deployed
+frontend's exact origin or every browser request will be blocked by CORS.
