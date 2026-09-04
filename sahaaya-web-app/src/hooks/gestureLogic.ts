@@ -1,5 +1,4 @@
 export const GESTURE_HOLD_MS = 450;
-export const BLINK_MAX_MS = 2000;
 export const COOLDOWN_MS = 500;
 export const FACE_LOST_PAUSE_MS = 500;
 export const BLINK_RELEASE_HYSTERESIS = 0.15;
@@ -8,6 +7,15 @@ export const NOD_START_DEGREES = 7;
 export const NOD_RETURN_DEGREES = 3;
 export const SHAKE_START_DEGREES = 10;
 export const SHAKE_RETURN_DEGREES = 4;
+// How much of the current pitch/yaw reading gets folded into the confirm
+// baseline on each frame while waiting for a nod/shake to start. Must be slow
+// relative to how fast a real nod/shake happens (roughly 0.5-1.5s end to
+// end): at 0.02, one second of continuous movement in one direction pulled
+// the baseline ~45% of the way there, absorbing enough of a natural nod's
+// amplitude to keep the delta under NOD_START_DEGREES — the confirmed root
+// cause of "nod does nothing" reports. At 0.005 the same second only pulls
+// the baseline ~14% of the way there.
+export const BASELINE_DRIFT_ALPHA = 0.005;
 
 export type GestureKind = "blink" | "mouth";
 
@@ -32,8 +40,11 @@ export function gestureStillActive(
     : jawScore !== null && jawScore > JAW_OPEN_THRESHOLD - 0.15;
 }
 
+// Fires as soon as the hold is long enough - the caller no longer waits for
+// the gesture to release (eyes reopen / mouth close) within a window too, so
+// a deliberate hold that simply lasted longer than expected still registers.
 export function isDeliberateHold(durationMs: number): boolean {
-  return durationMs >= GESTURE_HOLD_MS && durationMs <= BLINK_MAX_MS;
+  return durationMs >= GESTURE_HOLD_MS;
 }
 
 export function isCooldownComplete(nowMs: number, lastActionAtMs: number): boolean {

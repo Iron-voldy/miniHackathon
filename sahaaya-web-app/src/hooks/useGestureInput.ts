@@ -14,6 +14,7 @@ import {
   shakeStarted,
   shakeCrossedOpposite,
   shakeReturned,
+  BASELINE_DRIFT_ALPHA,
   type GestureKind,
 } from "./gestureLogic";
 
@@ -207,10 +208,13 @@ export function useGestureInput(options: GestureInputOptions): GestureInputState
           }
         } else {
           const stillActive = gestureStillActive(gestureActiveRef.current, blinkScore, jawScore, blinkThreshold);
-          if (!stillActive) {
+          if (stillActive) {
+            // Fire as soon as the hold is long enough - don't also require
+            // releasing (reopening eyes / closing the mouth) within a window,
+            // or a hold that simply lasted longer than expected never registers.
             const duration = now - gestureStartRef.current;
-            gestureActiveRef.current = null;
             if (isDeliberateHold(duration)) {
+              gestureActiveRef.current = null;
               lastActionAtRef.current = now;
               awaitingConfirmRef.current = true;
               setAwaitingConfirm(true);
@@ -218,6 +222,9 @@ export function useGestureInput(options: GestureInputOptions): GestureInputState
               baselineYawRef.current = yawDeg;
               onSelect(highlightedRef.current);
             }
+          } else {
+            // Released before the hold was long enough - not deliberate.
+            gestureActiveRef.current = null;
           }
         }
         return;
@@ -241,9 +248,11 @@ export function useGestureInput(options: GestureInputOptions): GestureInputState
             headGestureRef.current = "shake";
             shakeDirectionRef.current = dir;
           } else {
-            // Slowly track baseline while idle so small drift doesn't accumulate.
-            baselinePitchRef.current += (pitchDeg - baselinePitchRef.current) * 0.02;
-            baselineYawRef.current += (yawDeg - baselineYawRef.current) * 0.02;
+            // Slowly track baseline while idle so small drift doesn't accumulate -
+            // must stay slow relative to how fast a real nod/shake happens, or the
+            // baseline chases the gesture itself and it never clears threshold.
+            baselinePitchRef.current += (pitchDeg - baselinePitchRef.current) * BASELINE_DRIFT_ALPHA;
+            baselineYawRef.current += (yawDeg - baselineYawRef.current) * BASELINE_DRIFT_ALPHA;
           }
         }
       } else if (headGestureRef.current === "nod") {
