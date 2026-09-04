@@ -34,6 +34,7 @@ export interface GestureInputState {
   awaitingConfirm: boolean;
   cameraError: string | null;
   ready: boolean;
+  reset: () => void;
 }
 
 /**
@@ -74,6 +75,19 @@ export function useGestureInput(options: GestureInputOptions): GestureInputState
   const baselineYawRef = useRef<number | null>(null);
   const headGestureRef = useRef<"none" | "nod" | "shake">("none");
   const shakeDirectionRef = useRef<-1 | 1>(1);
+
+  // Called whenever the confirm modal closes via an on-screen tap (Confirm or
+  // Cancel) rather than a nod/shake, so the hook's internal state doesn't get
+  // stuck thinking a confirmation is still pending (which would otherwise
+  // freeze auto-scan and misinterpret the next gesture).
+  const reset = useCallback(() => {
+    awaitingConfirmRef.current = false;
+    setAwaitingConfirm(false);
+    headGestureRef.current = "none";
+    gestureActiveRef.current = null;
+    baselinePitchRef.current = null;
+    baselineYawRef.current = null;
+  }, []);
 
   const stop = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -262,5 +276,5 @@ export function useGestureInput(options: GestureInputOptions): GestureInputState
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, itemCount, scanIntervalMs, blinkThreshold]);
 
-  return { videoRef, highlightedIndex, faceDetected, awaitingConfirm, cameraError, ready };
+  return { videoRef, highlightedIndex, faceDetected, awaitingConfirm, cameraError, ready, reset };
 }

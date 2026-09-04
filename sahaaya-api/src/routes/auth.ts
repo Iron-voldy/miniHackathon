@@ -8,9 +8,12 @@ import { auditLog } from "../lib/audit";
 const DemoLoginSchema = z
   .object({
     name: z.string().min(2, "Name must be at least 2 characters").max(80),
+    // Normalize common formatting (spaces, dashes - e.g. "077 123 4567") before
+    // validating, so the example in our own error message actually passes.
     phone: z
       .string()
-      .regex(/^(?:\+94|0)7\d{8}$/, "Enter a valid Sri Lankan mobile number, e.g. 077 123 4567"),
+      .transform((value) => value.replace(/[\s-]/g, ""))
+      .pipe(z.string().regex(/^(?:\+94|0)7\d{8}$/, "Enter a valid Sri Lankan mobile number, e.g. 077 123 4567")),
     role: z.enum(["communicator", "caregiver"], {
       error: "Role must be 'communicator' or 'caregiver'",
     }),

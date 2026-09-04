@@ -82,12 +82,23 @@ export default function Board({ session }: { session: Session }) {
   }, [pendingIndex, board, mode, session.token]);
 
   const gesture = useGestureInput({
-    enabled: mode === "face" && pendingIndex === null,
+    // Camera/detection must keep running through the confirm phase too - it
+    // used to stop the instant a tile was selected, which killed nod-to-confirm
+    // before it ever got a chance to fire.
+    enabled: mode === "face",
     itemCount: board?.phrases.length ?? 0,
     onSelect: openConfirm,
     onConfirm: handleConfirm,
     onCancel: handleCancel,
   });
+
+  // Keep the gesture hook's internal "awaiting confirm" state in sync when the
+  // modal is dismissed by an on-screen tap rather than a nod/shake - otherwise
+  // auto-scan stays frozen and the next gesture is misread as a confirm/cancel.
+  useEffect(() => {
+    if (pendingIndex === null) gesture.reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingIndex, gesture.reset]);
 
   if (loadError) {
     return <p className="text-rose-600 bg-rose-50 border border-rose-100 rounded-xl p-4">{loadError}</p>;
